@@ -533,7 +533,10 @@
                 captureBtn.style.display = 'none';
                 passportGuide.style.display = 'none';
 
-                showError('📱 Kamera ishlamayapti.\n\nIltimos, "Galereyadan Yuklash" tugmasini ishlating.');
+                // Ensure upload button is always visible
+                uploadBtn.style.display = 'block';
+
+                showError('📱 Kamera ishlamayapti.\n\nIltimos, "Galereyadan Yuklash" tugmasini ishlating (kamera yoki galereyani tanlashingiz mumkin).');
             }
         }
 
@@ -1422,7 +1425,7 @@
             <button class="btn btn-secondary" id="upload-btn">
                 📁 Galereyadan Yuklash
             </button>
-            <input type="file" id="file-input" accept="image/*" style="display: none;">
+            <input type="file" id="file-input" accept="image/*" capture="environment" style="display: none;">
             <button class="btn btn-secondary" id="retake-btn" style="display: none;">
                 🔄 Qayta Olish
             </button>
@@ -1511,7 +1514,10 @@
                 captureBtn.style.display = 'none';
                 passportGuide.style.display = 'none';
 
-                showError('📱 Kamera ishlamayapti.\n\nIltimos, "Galereyadan Yuklash" tugmasini ishlating.');
+                // Ensure upload button is always visible
+                uploadBtn.style.display = 'block';
+
+                showError('📱 Kamera ishlamayapti.\n\nIltimos, "Galereyadan Yuklash" tugmasini ishlating (kamera yoki galereyani tanlashingiz mumkin).');
             }
         }
 
