@@ -251,6 +251,20 @@
             transform: translateY(0);
         }
 
+        .btn-primary:disabled {
+            background: #555;
+            color: #999;
+            box-shadow: none;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .btn-primary:disabled:hover {
+            transform: none;
+            background: #555;
+            box-shadow: none;
+        }
+
         .btn-primary.success {
             animation: success-glow 1s ease-in-out;
         }
@@ -478,7 +492,7 @@
 
         <div class="camera-section">
             <div class="camera-container">
-                <video id="camera-stream" autoplay playsinline></video>
+                <video id="camera-stream" autoplay playsinline muted></video>
                 <canvas id="canvas-preview"></canvas>
                 <div class="passport-guide" id="passport-guide">
                     <div class="corner-tl"></div>
@@ -548,6 +562,10 @@
         // Initialize camera with flexible constraints and fallback for maximum compatibility
         async function initCamera() {
             try {
+                // Disable capture button until camera is ready
+                captureBtn.disabled = true;
+                captureBtn.textContent = '⏳ Kamera tayyorlanmoqda...';
+
                 // Check if camera API is available
                 if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                     throw new Error('Camera API not supported in this browser');
@@ -579,16 +597,56 @@
                 }
 
                 cameraStream.srcObject = stream;
+
+                // Wait for video metadata to load (CRITICAL for Android)
+                await new Promise((resolve, reject) => {
+                    cameraStream.onloadedmetadata = () => {
+                        console.log(`📹 Video metadata loaded: ${cameraStream.videoWidth}x${cameraStream.videoHeight}`);
+                        resolve();
+                    };
+
+                    // Explicitly play the video (required for some Android browsers)
+                    cameraStream.play().then(() => {
+                        console.log('▶️ Video playback started');
+                    }).catch(err => {
+                        console.warn('⚠️ Video autoplay issue:', err);
+                    });
+
+                    // Timeout after 5 seconds
+                    setTimeout(() => reject(new Error('Video metadata loading timeout')), 5000);
+                });
+
+                // Double-check video dimensions
+                if (cameraStream.videoWidth === 0 || cameraStream.videoHeight === 0) {
+                    throw new Error('Video dimensions are invalid. Camera may not be ready.');
+                }
+
+                // Enable capture button now that camera is ready
+                captureBtn.disabled = false;
+                captureBtn.textContent = '📷 Rasmga Olish';
+
                 hideError();
 
             } catch (error) {
                 console.error('❌ Camera initialization failed:', error);
+                captureBtn.disabled = true;
+                captureBtn.textContent = '❌ Kamera xatosi';
                 showError('📱 Kamera ishlamayapti. Iltimos, kamera ruxsatini bering yoki brauzeringizni yangilang.\n\nXato: ' + error.message);
             }
         }
 
         // Capture photo with MRZ-only cropping for speed optimization
         function capturePhoto() {
+            // Validate video dimensions (CRITICAL for Android)
+            if (!cameraStream.videoWidth || !cameraStream.videoHeight ||
+                cameraStream.videoWidth === 0 || cameraStream.videoHeight === 0) {
+                console.error('❌ Video dimensions invalid:', cameraStream.videoWidth, cameraStream.videoHeight);
+                showError('⚠️ Kamera tayyor emas. Iltimos, bir oz kuting va qayta urinib ko\'ring.');
+                return;
+            }
+
+            console.log(`📸 Capturing from video: ${cameraStream.videoWidth}x${cameraStream.videoHeight}`);
+
             // Create full-size canvas from video
             const fullCanvas = document.createElement('canvas');
             fullCanvas.width = cameraStream.videoWidth;
@@ -603,6 +661,14 @@
             const containerHeight = cameraContainer.clientHeight;
 
             // Video aspect ratio might differ from container
+            // Safeguard against division by zero
+            if (fullCanvas.height === 0 || containerHeight === 0) {
+                console.error('❌ Invalid canvas or container dimensions');
+                showError('⚠️ Kamera o\'lchamlari noto\'g\'ri. Qayta urinib ko\'ring.');
+                retakePhoto();
+                return;
+            }
+
             const videoAspect = fullCanvas.width / fullCanvas.height;
             const containerAspect = containerWidth / containerHeight;
 
@@ -684,6 +750,13 @@
 
             // Convert to blob (quality 0.95 for MRZ clarity)
             finalCanvas.toBlob(async (blob) => {
+                if (!blob) {
+                    console.error('❌ Failed to create image blob');
+                    showError('⚠️ Rasmni saqlashda xatolik. Qayta urinib ko\'ring.');
+                    retakePhoto();
+                    return;
+                }
+
                 capturedImageBlob = blob;
                 console.log(`📸 MRZ area captured: ${finalCanvas.width}x${finalCanvas.height}, Size: ${(blob.size / 1024).toFixed(1)}KB`);
                 await scanPassport(blob);
