@@ -126,9 +126,18 @@ class CustomsScannerEngine:
                 else:
                     last_error = e
 
+        # User-friendly error message based on the error type
+        error_msg = str(last_error).lower()
+        if "mrz" in error_msg or "valid" in error_msg or "format" in error_msg:
+            user_msg = "Pasportdagi MRZ (mashina o'qiy oladigan zona) topilmadi. Iltimos, rasmni yorug'likda va aniq qilib qayta oling."
+        elif "network" in error_msg or "timeout" in error_msg or "connection" in error_msg:
+            user_msg = "Tarmoq xatosi. Iltimos, internet aloqangizni tekshiring va qayta urinib ko'ring."
+        else:
+            user_msg = f"Skanerlashda xatolik yuz berdi. Iltimos, qayta urinib ko'ring. ({str(last_error)[:50]})"
+
         raise HTTPException(
             status_code=500,
-            detail=f"Scan failed after {max_retries} attempts: {str(last_error)[:100]}"
+            detail=user_msg
         )
 
     def _extract_ocr_text(self, ocr_response) -> str:
